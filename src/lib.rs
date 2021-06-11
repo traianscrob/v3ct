@@ -49,8 +49,8 @@ impl<T> Deref for Node<T> where T:Sized{
     }
 }
 
-fn get_last<T>(start: &Box<Node<T>>, index: i32) -> Option<&Box<Node<T>>> where T:Sized{
-    if index == 0 {
+fn get_at<T>(start: &Box<Node<T>>, index: i32) -> Option<&Box<Node<T>>> where T:Sized{
+    if index <= 0 {
         return Some(start);
     }
     
@@ -59,7 +59,7 @@ fn get_last<T>(start: &Box<Node<T>>, index: i32) -> Option<&Box<Node<T>>> where 
             return None;
         },
         Some(node) => {
-            return get_last(node, index - 1);
+            return get_at(node, index - 1);
         }
     }
 }
@@ -101,7 +101,7 @@ impl <T: Display> V3ct<T>{
         match first {
             None => None,
             Some(value) =>{
-                match get_last(value, self._size - 1) {
+                match get_at(value, self._size - 1) {
                     None => None,
                     Some(x) => {
                         let data = x._data.as_ref();
@@ -120,7 +120,7 @@ impl <T: Display> V3ct<T>{
         match first {
             None => None,
             Some(node) =>{
-                match get_last(node, index) {
+                match get_at(node, self._size - index - 1) {
                     None => None,
                     Some(x) => {
                         let data = x._data.as_ref();
@@ -153,15 +153,14 @@ mod tests {
         vec.push(14);
         vec.push(15);
 
-        println!("{}", *vec.get(0).unwrap());
-        println!("{}", *vec.get(1).unwrap());
-        println!("{}", *vec.get(2).unwrap());
-        println!("{}", *vec.get(3).unwrap());
-        println!("{}", *vec.get(4).unwrap());
-        println!("{}", *vec.get(5).unwrap());
-
         assert_eq!(6, vec.size());
+        
         assert_eq!(10, *vec.first().unwrap());
         assert_eq!(15, *vec.last().unwrap());
+
+        assert_eq!(11, *vec.get(1).unwrap());
+        assert_eq!(12, *vec.get(2).unwrap());
+        assert_eq!(13, *vec.get(3).unwrap());
+        assert_eq!(14, *vec.get(4).unwrap());
     }
 }
