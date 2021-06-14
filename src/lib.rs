@@ -17,14 +17,7 @@ impl <T: Copy> Node<T>{
             _next: next
         }
     }
-
-    pub fn get_next(&self) -> Option<&Box<Self>>{
-        match &self._next {
-            None => None,
-            Some(node) => Some(node)
-        }
-    }
-
+    
     pub fn get_data(&self) -> Option<&Box<T>>{
         self._data.as_ref()
     }
@@ -105,23 +98,21 @@ impl <T: Copy> V3ct<T>{
     }
 
     pub fn end(&mut self) -> Option<&T>{
-        let start = &self._start;
-        match start {
+        match &self._start {
             None => None,
-            Some(_) =>{
+            Some(_) => {
                 self.get(self._size - 1)
             }
         }
     }
 
     pub fn start(&mut self) -> Option<&T>{
-        let start = &self._start;
-        match start {
+        match &self._start {
             None => None,
-            Some(node) =>{
+            Some(node) => {
                 match node.get_data() {
                     None => None,
-                    Some(da) => Some(&*da)
+                    Some(da) => Some(&*da.deref())
                 }
             }
         }
@@ -156,17 +147,13 @@ mod tests {
 
     #[derive(Copy, Clone)]
     struct User<'a>{
-        name: &'a str,
-        address: &'a str,
-        age: i8,
+        name: &'a str
     }
 
     impl<'a> User<'a>{
-        pub fn new(name: &'a str, address: &'a str, age: i8) -> Self{
+        pub fn new(name: &'a str) -> Self{
             Self{
-                name,
-                address,
-                age
+                name
             }
         }
     }
@@ -174,13 +161,13 @@ mod tests {
     #[test]
     fn struct_works() {
         let mut vec = V3ct::<User>::new();
-        vec.queue(User::new("User 1", "Address 1", 21));
-        vec.queue(User::new("User 2", "Address 2", 21));
-        vec.queue(User::new("User 3", "Address 3", 21));
-        vec.queue(User::new("User 4", "Address 4", 21));
+        vec.queue(User::new("User 1"));
+        vec.queue(User::new("User 2"));
+        vec.queue(User::new("User 3"));
+        vec.queue(User::new("User 4"));
 
-        vec.push(User::new("User 5", "Address 5", 21));
-        vec.push(User::new("User 6", "Address 6", 21));
+        vec.push(User::new("User 5"));
+        vec.push(User::new("User 6"));
 
         assert_eq!(6, vec.size());
 
@@ -214,5 +201,9 @@ mod tests {
         assert_eq!(10, *vec.get(2).unwrap());
         assert_eq!(12, *vec.get(3).unwrap());
         assert_eq!(13, *vec.get(4).unwrap());
+
+        let pop = vec.pop().unwrap();
+        assert_eq!(14, pop);
+        assert_eq!(4, vec.size());
     }
 }
