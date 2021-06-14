@@ -1,29 +1,22 @@
 use core::ops::Deref;
 use core::fmt::Display;
 
-struct Node<T> where T:Sized{
+struct Node<T: Sized + Copy>{
     _data: Option<Box<T>>,
     _next: Option<Box<Node<T>>>,
-    _prev: Option<Box<Node<T>>>,
 }
 
-pub struct V3ct<T> where T:Sized{
+pub struct V3ct<T: Sized + Copy>{
     _start: Option<Box<Node<T>>>,
-    _last: Option<Box<Node<T>>>,
     _size: i32
 }
 
-impl <T> Node<T>{
-    pub fn new(data: T, next: Option<Box<Node<T>>>, prev: Option<Box<Node<T>>>) -> Self{
+impl <T: Copy> Node<T>{
+    pub fn new(data: T, next: Option<Box<Node<T>>>) -> Self{
         Self{
             _data: Some(Box::new(data)),
-            _prev: prev,
             _next: next
         }
-    }
-
-    pub fn add_next(&mut self, data: T){
-        self._next = Some(Box::new(Self::new(data, None, None)));
     }
 
     pub fn get_next(&self) -> Option<&Box<Self>>{
@@ -33,15 +26,16 @@ impl <T> Node<T>{
         }
     }
 
-    pub fn get_prev(&self) -> Option<&Box<Self>>{
-        match &self._prev {
-            None => None,
-            Some(node) => Some(node)
-        }
+    pub fn get_data(&self) -> Option<&Box<T>>{
+        self._data.as_ref()
+    }
+
+    pub fn add_next(&mut self, data: T){
+        self._next = Some(Box::new(Self::new(data, None)));
     }
 }
 
-impl<T> Deref for Node<T> where T:Sized{
+impl<T> Deref for Node<T> where T:Sized + Copy{
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -49,12 +43,12 @@ impl<T> Deref for Node<T> where T:Sized{
     }
 }
 
-fn get_at<T>(start: &Box<Node<T>>, index: i32) -> Option<&Box<Node<T>>> where T:Sized{
+fn get_at<T>(start: &mut Box<Node<T>>, index: i32) -> Option<&mut Box<Node<T>>> where T:Sized + Copy{
     if index <= 0 {
         return Some(start);
     }
     
-    match &start._next {
+    match &mut start._next {
         None => {
             return None;
         },
@@ -64,31 +58,56 @@ fn get_at<T>(start: &Box<Node<T>>, index: i32) -> Option<&Box<Node<T>>> where T:
     }
 }
 
-impl <T: Display> V3ct<T>{
+impl <T: Display + Copy> V3ct<T>{
     fn new() -> Self{
         Self{
             _size: 0,
-            _start: None,
-            _last: None
+            _start: None
         }
     }
 
     pub fn push(&mut self, data: T){
-        let old_start = std::mem::replace(&mut self._start, None);
-        let new_start = Box::new(Node::new(data, old_start, None));
-
+        let new_start = Box::new(Node::new(data, self._start.take()));
         self._start = Some(new_start);
 
         self._size += 1;
     }
 
-    pub fn last(&mut self) -> Option<&T>{
-        let first = self._start.as_ref();
-        match first {
+    pub fn queue(&mut self, data: T){
+        match &mut self._start {
+            None => {
+                self.push(data);
+            },
+            Some(node) => {
+                match get_at(node, self._size - 1) {
+                    None => {},
+                    Some(value) => {
+                        let last = &mut *value;
+                        last.add_next(data);
+
+                        self._size += 1;
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn end(&mut self) -> Option<&T>{
+        let start = &self._start;
+        match start {
             None => None,
-            Some(value) =>{
-                let data = value._data.as_ref();
-                match data {
+            Some(_) =>{
+                self.get(self._size - 1)
+            }
+        }
+    }
+
+    pub fn start(&mut self) -> Option<&T>{
+        let start = &self._start;
+        match start {
+            None => None,
+            Some(node) =>{
+                match node.get_data() {
                     None => None,
                     Some(da) => Some(&*da)
                 }
@@ -96,31 +115,12 @@ impl <T: Display> V3ct<T>{
         }
     }
 
-    pub fn first(&mut self) -> Option<&T>{
-        let first = &self._start;
-        match first {
-            None => None,
-            Some(value) =>{
-                match get_at(value, self._size - 1) {
-                    None => None,
-                    Some(x) => {
-                        let data = x._data.as_ref();
-                        match data {
-                            None => None,
-                            Some(da) => Some(&*da)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     pub fn get(&mut self, index: i32) -> Option<&T>{
-        let first = &self._start;
+        let first = &mut self._start;
         match first {
             None => None,
             Some(node) =>{
-                match get_at(node, self._size - index - 1) {
+                match get_at(node, index) {
                     None => None,
                     Some(x) => {
                         let data = x._data.as_ref();
@@ -148,19 +148,21 @@ mod tests {
         let mut vec = V3ct::<i32>::new();
         vec.push(10);
         vec.push(11);
-        vec.push(12);
-        vec.push(13);
+
+        vec.queue(12);
+        vec.queue(13);
+
         vec.push(14);
-        vec.push(15);
 
-        assert_eq!(6, vec.size());
+        assert_eq!(5, vec.size());
         
-        assert_eq!(10, *vec.first().unwrap());
-        assert_eq!(15, *vec.last().unwrap());
+        assert_eq!(14, *vec.start().unwrap());
+        assert_eq!(13, *vec.end().unwrap());
 
+        assert_eq!(14, *vec.get(0).unwrap());
         assert_eq!(11, *vec.get(1).unwrap());
-        assert_eq!(12, *vec.get(2).unwrap());
-        assert_eq!(13, *vec.get(3).unwrap());
-        assert_eq!(14, *vec.get(4).unwrap());
+        assert_eq!(10, *vec.get(2).unwrap());
+        assert_eq!(12, *vec.get(3).unwrap());
+        assert_eq!(13, *vec.get(4).unwrap());
     }
 }
