@@ -43,8 +43,8 @@ impl<T> Deref for Node<T> where T:Sized + Copy{
     }
 }
 
-fn get_at<T>(start: &mut Box<Node<T>>, index: i32) -> Option<&mut Box<Node<T>>> where T:Sized + Copy{
-    if index <= 0 {
+fn get_next<T>(start: &mut Box<Node<T>>, level: i32) -> Option<&mut Box<Node<T>>> where T:Sized + Copy{
+    if level <= 0 {
         return Some(start);
     }
     
@@ -53,7 +53,7 @@ fn get_at<T>(start: &mut Box<Node<T>>, index: i32) -> Option<&mut Box<Node<T>>> 
             return None;
         },
         Some(node) => {
-            return get_at(node, index - 1);
+            return get_next(node, level - 1);
         }
     }
 }
@@ -79,11 +79,10 @@ impl <T: Display + Copy> V3ct<T>{
                 self.push(data);
             },
             Some(node) => {
-                match get_at(node, self._size - 1) {
+                match get_next(node, self._size - 1) {
                     None => {},
                     Some(value) => {
-                        let last = &mut *value;
-                        last.add_next(data);
+                        (&mut *value).add_next(data);
 
                         self._size += 1;
                     }
@@ -120,13 +119,12 @@ impl <T: Display + Copy> V3ct<T>{
         match first {
             None => None,
             Some(node) =>{
-                match get_at(node, index) {
+                match get_next(node, index) {
                     None => None,
                     Some(x) => {
-                        let data = x._data.as_ref();
-                        match data {
+                        match x.get_data() {
                             None => None,
-                            Some(da) => Some(&*da)
+                            Some(data) => Some(data.deref())
                         }
                     }
                 }
