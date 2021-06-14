@@ -1,5 +1,4 @@
 use core::ops::Deref;
-use core::fmt::Display;
 
 struct Node<T: Sized + Copy>{
     _data: Option<Box<T>>,
@@ -35,7 +34,7 @@ impl <T: Copy> Node<T>{
     }
 }
 
-impl<T> Deref for Node<T> where T:Sized + Copy{
+impl<T:Sized + Copy> Deref for Node<T>{
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -43,7 +42,7 @@ impl<T> Deref for Node<T> where T:Sized + Copy{
     }
 }
 
-fn get_next<T>(start: &mut Box<Node<T>>, level: i32) -> Option<&mut Box<Node<T>>> where T:Sized + Copy{
+fn get_next<T:Sized + Copy>(start: &mut Box<Node<T>>, level: i32) -> Option<&mut Box<Node<T>>>{
     if level <= 0 {
         return Some(start);
     }
@@ -58,11 +57,25 @@ fn get_next<T>(start: &mut Box<Node<T>>, level: i32) -> Option<&mut Box<Node<T>>
     }
 }
 
-impl <T: Display + Copy> V3ct<T>{
-    fn new() -> Self{
+impl <T: Copy> V3ct<T>{
+    pub fn new() -> Self{
         Self{
             _size: 0,
             _start: None
+        }
+    }
+
+    pub fn pop(&mut self) -> Option<T>{
+        let start = self._start.take().unwrap();
+        self._start = start._next;
+
+        self._size -= 1;
+
+        match &start._data {
+            None => None,
+            Some(value) => {
+                Some(*value.deref())
+            }
         }
     }
 
@@ -140,6 +153,45 @@ impl <T: Display + Copy> V3ct<T>{
 #[cfg(test)]
 mod tests {
     use crate::V3ct;
+
+    #[derive(Copy, Clone)]
+    struct User<'a>{
+        name: &'a str,
+        address: &'a str,
+        age: i8,
+    }
+
+    impl<'a> User<'a>{
+        pub fn new(name: &'a str, address: &'a str, age: i8) -> Self{
+            Self{
+                name,
+                address,
+                age
+            }
+        }
+    }
+
+    #[test]
+    fn struct_works() {
+        let mut vec = V3ct::<User>::new();
+        vec.queue(User::new("User 1", "Address 1", 21));
+        vec.queue(User::new("User 2", "Address 2", 21));
+        vec.queue(User::new("User 3", "Address 3", 21));
+        vec.queue(User::new("User 4", "Address 4", 21));
+
+        vec.push(User::new("User 5", "Address 5", 21));
+        vec.push(User::new("User 6", "Address 6", 21));
+
+        assert_eq!(6, vec.size());
+
+        assert_eq!("User 6", &*vec.start().unwrap().name);
+        assert_eq!("User 6", &*vec.pop().unwrap().name);
+
+        assert_eq!(5, vec.size());
+        assert_eq!("User 5", &*vec.start().unwrap().name);
+
+        assert_eq!("User 4", &*vec.end().unwrap().name);
+    }
 
     #[test]
     fn it_works() {
